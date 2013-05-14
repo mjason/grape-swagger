@@ -1,4 +1,5 @@
 require 'kramdown'
+require 'pry'
 
 module Grape
   class API
@@ -46,7 +47,6 @@ module Grape
               :hide_documentation_path => false
             }
             options = defaults.merge(options)
-
             @@target_class = options[:target_class]
             @@mount_path = options[:mount_path]
             @@class_name = options[:class_name] || options[:mount_path].gsub('/','')
@@ -60,7 +60,6 @@ module Grape
               header['Access-Control-Allow-Origin'] = '*'
               header['Access-Control-Request-Method'] = '*'
               routes = @@target_class::combined_routes
-
               if @@hide_documentation_path
                 routes.reject!{ |route, value| "/#{route}/".index(parse_path(@@mount_path, nil) << '/') == 0 }
               end
@@ -88,13 +87,14 @@ module Grape
               routes_array = routes.map do |route|
                 notes = route.route_notes && @@markdown ? Kramdown::Document.new(strip_heredoc(route.route_notes)).to_html : route.route_notes
                 http_codes = parse_http_codes route.route_http_codes
+                paramType = route.route_paramType || nil
                 operations = {
                     :notes => notes,
                     :summary => route.route_description || '',
                     :nickname   => route.route_method + route.route_path.gsub(/[\/:\(\)\.]/,'-'),
                     :httpMethod => route.route_method,
                     :parameters => parse_header_params(route.route_headers) +
-                      parse_params(route.route_params, route.route_path, route.route_method)
+                      parse_params(route.route_params, route.route_path, route.route_method, paramType)
                 }
                 operations.merge!({:errorResponses => http_codes}) unless http_codes.empty?
                 {
@@ -115,7 +115,7 @@ module Grape
 
 
           helpers do
-            def parse_params(params, path, method)
+            def parse_params(params, path, method, type)
               if params
                 params.map do |param, value|
                   value[:type] = 'file' if value.is_a?(Hash) && value[:type] == 'Rack::Multipart::UploadedFile'
@@ -123,8 +123,12 @@ module Grape
                   dataType = value.is_a?(Hash) ? value[:type]||'String' : 'String'
                   description = value.is_a?(Hash) ? value[:desc] : ''
                   required = value.is_a?(Hash) ? !!value[:required] : false
-                  # paramType = path.match(":#{param}") ? 'path' : (method == 'POST') ? 'body' : 'query'
-                  paramType = path.match(":#{param}") ? 'path' : (method == 'POST') ? 'form' : 'query'
+                  paramType = nil
+                  if type.nil?
+                    paramType = path.match(":#{param}") ? 'path' : (method == 'POST') ? 'form' : 'query'
+                  else
+                    paramType = type
+                  end
                   name = (value.is_a?(Hash) && value[:full_name]) || param
                   {
                     paramType: paramType,

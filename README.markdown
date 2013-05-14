@@ -99,6 +99,19 @@ desc "Reserve a virgin in heaven", {
 }
 ```
 
+### the defalut post is from if you have body, you have :
+```ruby
+  desc "用户注册", {
+        paramType: "body",
+        notes: <<-NOTE
+        用户注册API
+        ---
+
+        需要提供一下常熟，可能会出现过问题
+        NOTE
+      }
+```
+
 ## Contributing to grape-swagger
 
 * Check out the latest master to make sure the feature hasn't been implemented or the bug hasn't been fixed yet.
