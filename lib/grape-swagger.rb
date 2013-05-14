@@ -1,5 +1,4 @@
 require 'kramdown'
-require 'pry'
 
 module Grape
   class API
